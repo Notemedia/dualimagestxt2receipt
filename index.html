@@ -1,0 +1,1940 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>i2r Receipt Gallery - Dual Image Support</title>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background: #f5f5f5;
+            color: #333;
+            padding: 10px;
+            line-height: 1.4;
+        }
+
+        .main-container {
+            max-width: 100vw;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 350px 320px 1fr;
+            gap: 15px;
+            min-height: calc(100vh - 20px);
+        }
+
+        /* 左栏：实时预览 */
+        .preview-panel {
+            background: #fff;
+            border: 1px solid #ddd;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 20px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .panel-header {
+            background: #f8f8f8;
+            border-bottom: 1px solid #ddd;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .panel-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .preview-section {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .preview-header {
+            font-size: 11px;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+
+        .receipt-preview-container {
+            background: #fff;
+            margin: 0 auto;
+            position: relative;
+            width: 58mm;
+            min-height: 100mm;
+            overflow: auto;
+            max-height: 500px;
+            flex: 1;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            /* 隐藏滚动条但保留滚动功能 */
+            scrollbar-width: none; /* Firefox */
+        }
+
+        /* 空状态无边框和内边距 */
+        .receipt-preview-container.empty {
+            border: none;
+            padding: 0;
+        }
+
+        /* 隐藏Chrome和Safari的滚动条 */
+        .receipt-preview-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .receipt-preview-content {
+            background: #fff;
+            color: #000;
+            font-size: 10px;
+            line-height: 1.3;
+            word-wrap: break-word;
+            white-space: pre-line;
+            text-align: center;
+        }
+
+        .pixel-art-preview-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            margin: 0 0 2mm 0;
+            box-sizing: border-box;
+        }
+
+        .pixel-art-preview {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            max-height: 220px;
+            object-fit: contain;
+        }
+
+        .preview-perforation {
+            border-top: 1px dashed #ccc;
+            margin: 2mm 0;
+            width: 100%;
+        }
+
+        .preview-text-content {
+            font-size: 9px;
+            line-height: 1.2;
+            word-wrap: break-word;
+            color: #333;
+        }
+
+        .info-panel {
+            background: #f8f8f8;
+            border-top: 1px solid #ddd;
+            padding: 10px;
+            font-size: 9px;
+            color: #666;
+            text-align: center;
+        }
+
+        /* 中栏：控制参数和上传 */
+        .controls-panel {
+            background: #fff;
+            border: 1px solid #ddd;
+            overflow: hidden;
+            max-height: calc(100vh - 20px);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .controls-content {
+            padding: 15px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .control-group:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .group-title {
+            color: #555;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-item {
+            margin-bottom: 10px;
+        }
+
+        .control-label {
+            display: block;
+            font-size: 9px;
+            color: #666;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* 双图上传区域样式 */
+        .image-upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .upload-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .upload-group-title {
+            font-size: 9px;
+            color: #666;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 15px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fafafa;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .upload-area:hover {
+            border-color: #999;
+            background: #f0f0f0;
+        }
+
+        .upload-area.dragover {
+            border-color: #666;
+            background: #eee;
+        }
+
+        .upload-area.has-image {
+            border-color: #4CAF50;
+            background: #f8fff8;
+        }
+
+        .upload-text {
+            font-size: 9px;
+            color: #666;
+            line-height: 1.3;
+            margin-top: 3px;
+        }
+
+        .upload-hint {
+            font-size: 8px;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* 布局选择器样式 */
+        .layout-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .layout-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .layout-option:hover {
+            background: #f0f0f0;
+            border-color: #ccc;
+        }
+
+        .layout-option.selected {
+            background: #e8f5e8;
+            border-color: #4CAF50;
+        }
+
+        .layout-radio {
+            width: 12px;
+            height: 12px;
+            cursor: pointer;
+            accent-color: #4CAF50;
+        }
+
+        .layout-label {
+            font-size: 9px;
+            color: #666;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            flex: 1;
+        }
+
+        .layout-preview {
+            font-size: 8px;
+            color: #999;
+            font-family: monospace;
+        }
+
+        /* 图片处理参数组 */
+        .image-params-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .image-params-group {
+            padding: 10px;
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+        }
+
+        .image-params-title {
+            font-size: 9px;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 2px;
+            background: #ddd;
+            outline: none;
+            border: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #666;
+            cursor: pointer;
+            border-radius: 0;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            background: #666;
+            cursor: pointer;
+            border: none;
+            border-radius: 0;
+        }
+
+        .range-container {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .range-value {
+            color: #555;
+            font-size: 8px;
+            min-width: 25px;
+            text-align: center;
+            background: #f0f0f0;
+            padding: 1px 3px;
+            border: 1px solid #ddd;
+            font-weight: 500;
+        }
+
+        select, textarea {
+            width: 100%;
+            background: #fff;
+            border: 1px solid #ccc;
+            color: #333;
+            padding: 6px;
+            font-family: inherit;
+            font-size: 10px;
+            transition: border-color 0.2s;
+        }
+
+        select:focus, textarea:focus {
+            border-color: #666;
+            outline: none;
+        }
+
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+            line-height: 1.3;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 6px 0;
+            padding: 4px;
+            background: #f9f9f9;
+        }
+
+        input[type="checkbox"] {
+            width: 12px;
+            height: 12px;
+            cursor: pointer;
+            accent-color: #666;
+        }
+
+        .checkbox-label {
+            font-size: 9px;
+            color: #666;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .button-group {
+            display: grid;
+            gap: 6px;
+            margin: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+
+        .btn {
+            background: #f8f8f8;
+            border: 1px solid #ccc;
+            color: #333;
+            padding: 10px 12px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            background: #e8e8e8;
+            border-color: #999;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 右栏：画廊 */
+        .gallery-panel {
+            background: #fff;
+            border: 1px solid #ddd;
+            overflow: hidden;
+            position: relative;
+            min-width: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .gallery-header {
+            background: #f8f8f8;
+            border-bottom: 1px solid #ddd;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gallery-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .page-indicator {
+            font-size: 11px;
+            color: #666;
+            background: #fff;
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+        }
+
+        .gallery-content {
+            padding: 20px;
+            background: #fefefe;
+            min-height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+
+        .gallery-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f8f8f8;
+            border: 1px solid #e0e0e0;
+        }
+
+        .gallery-btn {
+            background: #f8f8f8;
+            border: 1px solid #ccc;
+            color: #333;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+            min-width: 80px;
+        }
+
+        .gallery-btn:hover {
+            background: #e8e8e8;
+            border-color: #999;
+        }
+
+        .pagination-btn {
+            background: #fff;
+            border: 1px solid #ddd;
+            color: #555;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+            min-width: 50px;
+        }
+
+        .pagination-btn:hover {
+            background: #f0f0f0;
+            border-color: #bbb;
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* 票据网格 */
+        .receipts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 25px;
+            margin: 0;
+        }
+
+        .receipt-slot {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.2s ease;
+            justify-self: center;
+        }
+
+        .receipt-slot:hover {
+            transform: translateY(-2px);
+        }
+
+        .receipt-zigzag-top,
+        .receipt-zigzag-bottom {
+            width: 100%;
+            height: 4px;
+            background: repeating-linear-gradient(
+                45deg,
+                #ddd 0px,
+                #ddd 3px,
+                transparent 3px,
+                transparent 6px
+            );
+            position: relative;
+        }
+
+        .receipt-zigzag-top {
+            margin-bottom: 3px;
+        }
+
+        .receipt-zigzag-bottom {
+            margin-top: 3px;
+            transform: rotate(180deg);
+        }
+
+        .receipt-display {
+            background: #fff;
+            border: 1px solid #ddd;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+            position: relative;
+            width: 200px;
+            min-height: 280px;
+        }
+
+        .receipt-display:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .receipt-image {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+            cursor: pointer;
+        }
+
+        .receipt-placeholder {
+            width: 200px;
+            height: 280px;
+            background: #fafafa;
+            border: 1px dashed #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 9px;
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .receipt-label {
+            font-size: 8px;
+            color: #666;
+            margin: 4px 0;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: bold;
+        }
+
+        .receipt-actions {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .receipt-btn {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            color: #555;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+            flex: 1;
+        }
+
+        .receipt-btn:hover {
+            background: #e8e8e8;
+            border-color: #bbb;
+        }
+
+        .receipt-btn.clear-btn {
+            background: #fff;
+            color: #999;
+            border-color: #e0e0e0;
+        }
+
+        .receipt-btn.clear-btn:hover {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        /* 隐藏的实际小票容器 */
+        .hidden-receipt-container {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+            background: #fff;
+            box-sizing: border-box;
+        }
+
+        .hidden-receipt-content {
+            background: #fff;
+            color: #000;
+            overflow: hidden;
+        }
+
+        .hidden-pixel-art-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            margin: 0 0 2mm 0;
+            box-sizing: border-box;
+        }
+
+        .hidden-pixel-art-image {
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        .hidden-perforation {
+            border-top: 1px dashed #ccc;
+            margin: 2mm 0;
+        }
+
+        .hidden-text-content {
+            word-wrap: break-word;
+            white-space: pre-line;
+            line-height: 1.3;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+            background: #ccc;
+        }
+        
+        .status-indicator.active {
+            background: #4CAF50;
+        }
+
+        /* 文本对齐选项 */
+        .text-align-options {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+
+        .text-align-option {
+            flex: 1;
+            text-align: center;
+            padding: 6px;
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .text-align-option.selected {
+            background: #e8f5e8;
+            border-color: #4CAF50;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1400px) {
+            .main-container {
+                grid-template-columns: 300px 280px 1fr;
+                gap: 12px;
+            }
+            
+            .receipts-grid {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 20px;
+            }
+            
+            .receipt-display,
+            .receipt-placeholder {
+                width: 180px;
+                min-height: 240px;
+            }
+            
+            .receipt-placeholder {
+                height: 240px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr;
+            }
+            
+            .preview-panel,
+            .controls-panel {
+                max-height: 350px;
+            }
+            
+            .receipts-grid {
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                gap: 15px;
+            }
+            
+            .receipt-display,
+            .receipt-placeholder {
+                width: 160px;
+                min-height: 220px;
+            }
+            
+            .receipt-placeholder {
+                height: 220px;
+            }
+            
+            .pixel-art-preview {
+                max-height: 180px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- 左栏：实时预览 -->
+        <div class="preview-panel">
+            <div class="panel-header">
+                <div class="panel-title">live preview</div>
+            </div>
+
+            <div class="preview-section">
+                <div class="preview-header">receipt preview</div>
+                <div class="receipt-preview-container empty" id="receiptPreviewContainer">
+                    <div class="receipt-preview-content" id="receiptPreviewContent">
+                        <!-- 初始状态为空 -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-panel" id="infoPanel"><span class="status-indicator" id="statusIndicator"></span> ready to process...</div>
+        </div>
+
+        <!-- 中栏：控制参数和上传 -->
+        <div class="controls-panel">
+            <div class="panel-header">
+                <div class="panel-title">controls</div>
+            </div>
+
+            <div class="controls-content">
+                <!-- 布局选择 -->
+                <div class="control-group">
+                    <div class="group-title">layout options</div>
+                    <div class="layout-selector">
+                        <div class="layout-option selected" data-layout="image1-text-image2">
+                            <input type="radio" name="layout" value="image1-text-image2" class="layout-radio" checked>
+                            <label class="layout-label">image1 → text → image2</label>
+                            <div class="layout-preview">[img1][txt][img2]</div>
+                        </div>
+                        <div class="layout-option" data-layout="image1-image2-text">
+                            <input type="radio" name="layout" value="image1-image2-text" class="layout-radio">
+                            <label class="layout-label">image1 → image2 → text</label>
+                            <div class="layout-preview">[img1][img2][txt]</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 双图上传区域 -->
+                <div class="control-group">
+                    <div class="group-title">dual image upload</div>
+                    <div class="image-upload-section">
+                        <!-- Image 1 -->
+                        <div class="upload-group">
+                            <div class="upload-group-title">image 1</div>
+                            <input type="file" id="imageInput1" accept="image/*">
+                            <div class="upload-area" id="uploadArea1">
+                                <div class="upload-text">
+                                    click or drag<br>image 1 here
+                                </div>
+                                <div class="upload-hint">png/jpg/webp</div>
+                            </div>
+                        </div>
+
+                        <!-- Image 2 -->
+                        <div class="upload-group">
+                            <div class="upload-group-title">image 2</div>
+                            <input type="file" id="imageInput2" accept="image/*">
+                            <div class="upload-area" id="uploadArea2">
+                                <div class="upload-text">
+                                    click or drag<br>image 2 here
+                                </div>
+                                <div class="upload-hint">png/jpg/webp</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 双图处理参数 -->
+                <div class="control-group">
+                    <div class="group-title">image processing</div>
+                    <div class="image-params-section">
+                        <!-- Image 1 参数 -->
+                        <div class="image-params-group">
+                            <div class="image-params-title">image 1 settings</div>
+                            <div class="control-item">
+                                <label class="control-label">dither matrix</label>
+                                <select id="matrixSize1">
+                                    <option value="2">2×2</option>
+                                    <option value="4" selected>4×4</option>
+                                    <option value="8">8×8</option>
+                                    <option value="16">16×16</option>
+                                </select>
+                            </div>
+                            <div class="control-item">
+                                <label class="control-label">brightness</label>
+                                <div class="range-container">
+                                    <input type="range" id="brightness1" min="0.5" max="2" step="0.1" value="1">
+                                    <span class="range-value" id="brightness1Value">1.0</span>
+                                </div>
+                            </div>
+                            <div class="control-item">
+                                <label class="control-label">contrast</label>
+                                <div class="range-container">
+                                    <input type="range" id="contrast1" min="0.5" max="2" step="0.1" value="1">
+                                    <span class="range-value" id="contrast1Value">1.0</span>
+                                </div>
+                            </div>
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="invert1">
+                                <label class="checkbox-label" for="invert1">invert colors</label>
+                            </div>
+                            <!-- 添加抖动效果开关 -->
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="enableDither1" checked>
+                                <label class="checkbox-label" for="enableDither1">enable dithering</label>
+                            </div>
+                        </div>
+
+                        <!-- Image 2 参数 -->
+                        <div class="image-params-group">
+                            <div class="image-params-title">image 2 settings</div>
+                            <div class="control-item">
+                                <label class="control-label">dither matrix</label>
+                                <select id="matrixSize2">
+                                    <option value="2">2×2</option>
+                                    <option value="4" selected>4×4</option>
+                                    <option value="8">8×8</option>
+                                    <option value="16">16×16</option>
+                                </select>
+                            </div>
+                            <div class="control-item">
+                                <label class="control-label">brightness</label>
+                                <div class="range-container">
+                                    <input type="range" id="brightness2" min="0.5" max="2" step="0.1" value="1">
+                                    <span class="range-value" id="brightness2Value">1.0</span>
+                                </div>
+                            </div>
+                            <div class="control-item">
+                                <label class="control-label">contrast</label>
+                                <div class="range-container">
+                                    <input type="range" id="contrast2" min="0.5" max="2" step="0.1" value="1">
+                                    <span class="range-value" id="contrast2Value">1.0</span>
+                                </div>
+                            </div>
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="invert2">
+                                <label class="checkbox-label" for="invert2">invert colors</label>
+                            </div>
+                            <!-- 添加抖动效果开关 -->
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="enableDither2" checked>
+                                <label class="checkbox-label" for="enableDither2">enable dithering</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 全局设置 -->
+                <div class="control-group">
+                    <div class="group-title">global settings</div>
+                    <div class="control-item">
+                        <label class="control-label">bleed (mm)</label>
+                        <div class="range-container">
+                            <input type="range" id="bleed" min="0" max="5" step="0.5" value="0">
+                            <span class="range-value" id="bleedValue">0.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="group-title">text content</div>
+                    <textarea id="receiptText" placeholder="enter receipt text content here...
+use '---' for separator lines
+supports multi-line text">WELCOME TO PIXEL MART
+========================
+Item 1                       $12.99
+Item 2                        $8.50
+Item 3                       $15.25
+------------------------
+Subtotal                     $36.74
+Tax                           $2.94
+Total                        $39.68
+========================
+Thank you for shopping!
+Visit us again soon</textarea>
+                </div>
+
+                <!-- 字体和样式 -->
+                <div class="control-group">
+                    <div class="group-title">text styling</div>
+                    
+                    <!-- 字体选择 -->
+                    <div class="control-item">
+                        <label class="control-label">font family</label>
+                        <select id="fontFamily">
+                            <option value="Consolas, Monaco, monospace">Consolas</option>
+                            <option value="'Courier New', Courier, monospace">Courier New</option>
+                            <option value="'Lucida Console', Monaco, monospace">Lucida Console</option>
+                            <option value="Arial, sans-serif">Arial</option>
+                            <option value="Verdana, sans-serif">Verdana</option>
+                            <!-- 添加中文字体 -->
+                            <option value="SimSun, '宋体'">宋体</option>
+                            <option value="SimHei, '黑体'">黑体</option>
+                            <option value="KaiTi, '楷体'">楷体</option>
+                            <option value="FangSong, '仿宋'">仿宋</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 文本对齐 -->
+                    <div class="control-item">
+                        <label class="control-label">text alignment</label>
+                        <div class="text-align-options">
+                            <div class="text-align-option selected" data-align="left">Left</div>
+                            <div class="text-align-option" data-align="center">Center</div>
+                            <div class="text-align-option" data-align="right">Right</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 其他文本设置 -->
+                    <div class="control-item">
+                        <label class="control-label">font size (px)</label>
+                        <div class="range-container">
+                            <input type="range" id="fontSize" min="6" max="16" value="9">
+                            <span class="range-value" id="fontSizeValue">9</span>
+                        </div>
+                    </div>
+                    <div class="control-item">
+                        <label class="control-label">line height</label>
+                        <div class="range-container">
+                            <input type="range" id="lineHeight" min="1" max="2" step="0.1" value="1.2">
+                            <span class="range-value" id="lineHeightValue">1.2</span>
+                        </div>
+                    </div>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="addPerforation" checked>
+                        <label class="checkbox-label" for="addPerforation">perforation lines</label>
+                    </div>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="preserveSpace">
+                        <label class="checkbox-label" for="preserveSpace">preserve white-space</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="button-group">
+                <button class="btn" id="generateBtn">generate receipt</button>
+                <button class="btn" id="clearAllBtn">clear all</button>
+            </div>
+        </div>
+
+        <!-- 右栏：画廊 -->
+        <div class="gallery-panel">
+            <div class="gallery-header">
+                <div class="gallery-title">receipt gallery</div>
+                <div class="page-indicator" id="pageIndicator">page 1 of 1</div>
+            </div>
+
+            <div class="gallery-content">
+                <div class="gallery-controls">
+                    <button class="gallery-btn" id="clearGalleryBtn">clear gallery</button>
+                    <button class="gallery-btn" id="downloadAllBtn">download all</button>
+                    <button class="pagination-btn" id="prevPageBtn">← prev</button>
+                    <button class="pagination-btn" id="nextPageBtn">next →</button>
+                </div>
+
+                <div class="receipts-grid" id="receiptsGrid">
+                    <!-- Receipt slots will be generated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 隐藏的渲染容器 -->
+    <div class="hidden-receipt-container" id="hiddenReceiptContainer">
+        <div class="hidden-receipt-content" id="hiddenReceiptContent">
+            <!-- 内容将动态生成 -->
+        </div>
+    </div>
+
+    <script>
+        class DualImageReceiptGenerator {
+            constructor() {
+                this.images = {
+                    image1: null,
+                    image2: null
+                };
+                this.pixelArtCanvases = {
+                    canvas1: null,
+                    canvas2: null
+                };
+                this.gallery = [];
+                this.currentPage = 1;
+                this.itemsPerPage = 10; // 改为每页10个槽位
+                this.currentLayout = 'image1-text-image2';
+                this.textAlign = 'center'; // 默认文本居中
+                
+                this.initializeElements();
+                this.bindEvents();
+                this.setupFileHandling();
+                this.generateReceiptSlots();
+                this.updatePreview();
+            }
+
+            initializeElements() {
+                // 预览元素
+                this.previewContent = document.getElementById('receiptPreviewContent');
+                this.previewContainer = document.getElementById('receiptPreviewContainer');
+                this.statusIndicator = document.getElementById('statusIndicator');
+                this.infoPanel = document.getElementById('infoPanel');
+                
+                // 控制元素
+                this.layoutOptions = document.querySelectorAll('input[name="layout"]');
+                this.receiptText = document.getElementById('receiptText');
+                this.generateBtn = document.getElementById('generateBtn');
+                this.clearAllBtn = document.getElementById('clearAllBtn');
+                this.fontFamily = document.getElementById('fontFamily');
+                
+                // 文本对齐选项
+                this.textAlignOptions = document.querySelectorAll('.text-align-option');
+                
+                // 图片上传元素
+                this.imageInputs = {
+                    input1: document.getElementById('imageInput1'),
+                    input2: document.getElementById('imageInput2')
+                };
+                this.uploadAreas = {
+                    area1: document.getElementById('uploadArea1'),
+                    area2: document.getElementById('uploadArea2')
+                };
+                
+                // 图片处理参数
+                this.imageParams = {
+                    matrixSize1: document.getElementById('matrixSize1'),
+                    brightness1: document.getElementById('brightness1'),
+                    contrast1: document.getElementById('contrast1'),
+                    invert1: document.getElementById('invert1'),
+                    enableDither1: document.getElementById('enableDither1'), // 新增
+                    matrixSize2: document.getElementById('matrixSize2'),
+                    brightness2: document.getElementById('brightness2'),
+                    contrast2: document.getElementById('contrast2'),
+                    invert2: document.getElementById('invert2'),
+                    enableDither2: document.getElementById('enableDither2') // 新增
+                };
+                
+                // 文本样式参数
+                this.textParams = {
+                    fontSize: document.getElementById('fontSize'),
+                    lineHeight: document.getElementById('lineHeight'),
+                    addPerforation: document.getElementById('addPerforation'),
+                    bleed: document.getElementById('bleed'),
+                    preserveSpace: document.getElementById('preserveSpace')
+                };
+                
+                // 画廊元素
+                this.receiptsGrid = document.getElementById('receiptsGrid');
+                this.pageIndicator = document.getElementById('pageIndicator');
+                this.prevPageBtn = document.getElementById('prevPageBtn');
+                this.nextPageBtn = document.getElementById('nextPageBtn');
+                this.clearGalleryBtn = document.getElementById('clearGalleryBtn');
+                this.downloadAllBtn = document.getElementById('downloadAllBtn');
+                
+                // 隐藏容器
+                this.hiddenContainer = document.getElementById('hiddenReceiptContainer');
+                this.hiddenContent = document.getElementById('hiddenReceiptContent');
+                
+                // 初始化滑块值显示
+                this.updateSliderValues();
+            }
+
+            bindEvents() {
+                // 布局选择事件
+                this.layoutOptions.forEach(option => {
+                    option.addEventListener('change', () => {
+                        this.currentLayout = option.value;
+                        document.querySelectorAll('.layout-option').forEach(opt => opt.classList.remove('selected'));
+                        option.closest('.layout-option').classList.add('selected');
+                        this.updatePreview();
+                    });
+                });
+                
+                // 文本变化事件
+                this.receiptText.addEventListener('input', () => this.updatePreview());
+                
+                // 字体变化事件
+                this.fontFamily.addEventListener('change', () => this.updatePreview());
+                
+                // 文本对齐选项事件
+                this.textAlignOptions.forEach(option => {
+                    option.addEventListener('click', () => {
+                        this.textAlignOptions.forEach(opt => opt.classList.remove('selected'));
+                        option.classList.add('selected');
+                        this.textAlign = option.dataset.align;
+                        this.updatePreview();
+                    });
+                });
+                
+                // 参数滑块事件
+                Object.entries(this.imageParams).forEach(([key, element]) => {
+                    if (element && element.type === 'range') {
+                        element.addEventListener('input', () => {
+                            this.updateSliderValues();
+                            this.processImages();
+                            this.updatePreview();
+                        });
+                    } else if (element && (element.type === 'checkbox' || element.tagName === 'SELECT')) {
+                        element.addEventListener('change', () => {
+                            this.processImages();
+                            this.updatePreview();
+                        });
+                    }
+                });
+                
+                Object.entries(this.textParams).forEach(([key, element]) => {
+                    if (element && element.type === 'range') {
+                        element.addEventListener('input', () => {
+                            this.updateSliderValues();
+                            this.updatePreview();
+                        });
+                    } else if (element && element.type === 'checkbox') {
+                        element.addEventListener('change', () => this.updatePreview());
+                    }
+                });
+                
+                // 按钮事件
+                this.generateBtn.addEventListener('click', () => this.generateReceipt());
+                this.clearAllBtn.addEventListener('click', () => this.clearAll());
+                this.clearGalleryBtn.addEventListener('click', () => this.clearGallery());
+                this.downloadAllBtn.addEventListener('click', () => this.downloadAll());
+                this.prevPageBtn.addEventListener('click', () => this.changePage(-1));
+                this.nextPageBtn.addEventListener('click', () => this.changePage(1));
+            }
+
+            setupFileHandling() {
+                // 设置文件上传处理
+                ['1', '2'].forEach(num => {
+                    const input = this.imageInputs[`input${num}`];
+                    const area = this.uploadAreas[`area${num}`];
+                    
+                    // 点击上传区域触发文件选择
+                    area.addEventListener('click', () => input.click());
+                    
+                    // 文件选择事件
+                    input.addEventListener('change', (e) => {
+                        if (e.target.files.length > 0) {
+                            this.handleImageUpload(e.target.files[0], num);
+                        }
+                    });
+                    
+                    // 拖拽事件
+                    area.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        area.classList.add('dragover');
+                    });
+                    
+                    area.addEventListener('dragleave', () => {
+                        area.classList.remove('dragover');
+                    });
+                    
+                    area.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        area.classList.remove('dragover');
+                        if (e.dataTransfer.files.length > 0) {
+                            this.handleImageUpload(e.dataTransfer.files[0], num);
+                        }
+                    });
+                });
+            }
+
+            updateSliderValues() {
+                // 更新所有滑块的显示值
+                const sliders = [
+                    'brightness1', 'contrast1',
+                    'brightness2', 'contrast2',
+                    'fontSize', 'lineHeight', 'bleed'
+                ];
+                
+                sliders.forEach(id => {
+                    const slider = document.getElementById(id);
+                    const valueSpan = document.getElementById(id + 'Value');
+                    if (slider && valueSpan) {
+                        valueSpan.textContent = slider.value;
+                    }
+                });
+            }
+
+            handleImageUpload(file, imageNum) {
+                if (!file.type.startsWith('image/')) {
+                    this.updateStatus('Error: Please select an image file', false);
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        this.images[`image${imageNum}`] = img;
+                        this.uploadAreas[`area${imageNum}`].classList.add('has-image');
+                        this.uploadAreas[`area${imageNum}`].innerHTML = `
+                            <div class="upload-text">image ${imageNum} loaded<br>${Math.round(file.size/1024)}KB</div>
+                            <div class="upload-hint">${img.width}×${img.height}px</div>
+                        `;
+                        
+                        this.processImages();
+                        this.updatePreview();
+                        this.updateStatus(`Image ${imageNum} processed successfully`, true);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            processImages() {
+                ['1', '2'].forEach(num => {
+                    const image = this.images[`image${num}`];
+                    if (image) {
+                        this.pixelArtCanvases[`canvas${num}`] = this.createPixelArt(image, num);
+                    }
+                });
+            }
+
+            createPixelArt(img, imageNum) {
+                const matrixSize = parseInt(this.imageParams[`matrixSize${imageNum}`].value);
+                const brightness = parseFloat(this.imageParams[`brightness${imageNum}`].value);
+                const contrast = parseFloat(this.imageParams[`contrast${imageNum}`].value);
+                const invert = this.imageParams[`invert${imageNum}`].checked;
+                const enableDither = this.imageParams[`enableDither${imageNum}`].checked; // 新增
+                
+                // 计算目标尺寸（58mm宽度对应约220px，保持宽高比）
+                const targetWidth = 220;
+                const aspectRatio = img.height / img.width;
+                let targetHeight = targetWidth * aspectRatio;
+                
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+                
+                // 绘制和处理图像
+                ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+                
+                // 获取图像数据
+                const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
+                const data = imageData.data;
+                
+                // 应用亮度和对比度
+                for (let i = 0; i < data.length; i += 4) {
+                    // 转换为灰度
+                    const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+                    
+                    // 应用亮度和对比度
+                    let processed = ((gray / 255 - 0.5) * contrast + 0.5) * brightness * 255;
+                    processed = Math.max(0, Math.min(255, processed));
+                    
+                    // 应用反色
+                    if (invert) {
+                        processed = 255 - processed;
+                    }
+                    
+                    data[i] = data[i + 1] = data[i + 2] = processed;
+                }
+                
+                // 根据设置决定是否应用抖动效果
+                if (enableDither) {
+                    // 应用有序抖动
+                    this.applyOrderedDithering(data, targetWidth, targetHeight, matrixSize);
+                } else {
+                    // 如果不应用抖动，则使用简单的阈值二值化
+                    this.applyThreshold(data);
+                }
+                
+                // 重新绘制处理后的图像
+                ctx.putImageData(imageData, 0, 0);
+                
+                return canvas;
+            }
+
+            applyThreshold(data) {
+                for (let i = 0; i < data.length; i += 4) {
+                    const gray = data[i];
+                    const newValue = gray > 128 ? 255 : 0;
+                    data[i] = data[i + 1] = data[i + 2] = newValue;
+                }
+            }
+
+            applyOrderedDithering(data, width, height, matrixSize) {
+                // 生成抖动矩阵
+                const matrix = this.generateDitherMatrix(matrixSize);
+                
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const i = (y * width + x) * 4;
+                        const threshold = (matrix[y % matrixSize][x % matrixSize] / (matrixSize * matrixSize)) * 255;
+                        
+                        const gray = data[i];
+                        const newValue = gray > threshold ? 255 : 0;
+                        
+                        data[i] = data[i + 1] = data[i + 2] = newValue;
+                    }
+                }
+            }
+
+            generateDitherMatrix(size) {
+                if (size === 2) {
+                    return [[0, 2], [3, 1]];
+                } else if (size === 4) {
+                    return [
+                        [0, 8, 2, 10],
+                        [12, 4, 14, 6],
+                        [3, 11, 1, 9],
+                        [15, 7, 13, 5]
+                    ];
+                } else if (size === 8) {
+                    return [
+                        [0, 32, 8, 40, 2, 34, 10, 42],
+                        [48, 16, 56, 24, 50, 18, 58, 26],
+                        [12, 44, 4, 36, 14, 46, 6, 38],
+                        [60, 28, 52, 20, 62, 30, 54, 22],
+                        [3, 35, 11, 43, 1, 33, 9, 41],
+                        [51, 19, 59, 27, 49, 17, 57, 25],
+                        [15, 47, 7, 39, 13, 45, 5, 37],
+                        [63, 31, 55, 23, 61, 29, 53, 21]
+                    ];
+                } else {
+                    // 简化的16x16矩阵
+                    const matrix = [];
+                    for (let i = 0; i < size; i++) {
+                        matrix[i] = [];
+                        for (let j = 0; j < size; j++) {
+                            matrix[i][j] = ((i * size + j) * 256 / (size * size)) | 0;
+                        }
+                    }
+                    return matrix;
+                }
+            }
+
+            updatePreview() {
+                const text = this.receiptText.value;
+                const fontSize = parseInt(this.textParams.fontSize.value);
+                const lineHeight = parseFloat(this.textParams.lineHeight.value);
+                const addPerforation = this.textParams.addPerforation.checked;
+                const preserveSpace = this.textParams.preserveSpace.checked;
+                const fontFamily = this.fontFamily.value;
+                const bleed = parseFloat(this.textParams.bleed.value);
+                const whiteSpace = preserveSpace ? 'pre' : 'pre-line';
+                
+                let content = '';
+                
+                // 根据布局排列内容
+                if (this.currentLayout === 'image1-text-image2') {
+                    // Image1 → Text → Image2
+                    if (this.pixelArtCanvases.canvas1) {
+                        content += this.getImageHTML(this.pixelArtCanvases.canvas1, 'preview') + '\n';
+                        if (addPerforation && (text.trim() || this.pixelArtCanvases.canvas2)) {
+                            content += '<div class="preview-perforation"></div>\n';
+                        }
+                    }
+                    
+                    if (text.trim()) {
+                        content += `<div class="preview-text-content" style="font-size: ${fontSize}px; line-height: ${lineHeight}; text-align: ${this.textAlign}; font-family: ${fontFamily}; white-space: ${whiteSpace}; padding: ${bleed}mm;">${this.formatText(text)}</div>\n`;
+                        if (addPerforation && this.pixelArtCanvases.canvas2) {
+                            content += '<div class="preview-perforation"></div>\n';
+                        }
+                    }
+                    
+                    if (this.pixelArtCanvases.canvas2) {
+                        content += this.getImageHTML(this.pixelArtCanvases.canvas2, 'preview');
+                    }
+                } else if (this.currentLayout === 'image1-image2-text') {
+                    // Image1 → Image2 → Text
+                    if (this.pixelArtCanvases.canvas1) {
+                        content += this.getImageHTML(this.pixelArtCanvases.canvas1, 'preview') + '\n';
+                        if (addPerforation && (this.pixelArtCanvases.canvas2 || text.trim())) {
+                            content += '<div class="preview-perforation"></div>\n';
+                        }
+                    }
+                    
+                    if (this.pixelArtCanvases.canvas2) {
+                        content += this.getImageHTML(this.pixelArtCanvases.canvas2, 'preview') + '\n';
+                        if (addPerforation && text.trim()) {
+                            content += '<div class="preview-perforation"></div>\n';
+                        }
+                    }
+                    
+                    if (text.trim()) {
+                        content += `<div class="preview-text-content" style="font-size: ${fontSize}px; line-height: ${lineHeight}; text-align: ${this.textAlign}; font-family: ${fontFamily}; white-space: ${whiteSpace}; padding: ${bleed}mm;">${this.formatText(text)}</div>`;
+                    }
+                }
+                
+                // 检查内容是否为空（去掉HTML标签后的纯文本是否为空？）
+                const hasContent = content.replace(/<[^>]*>/g, '').trim() !== '';
+                
+                if (hasContent) {
+                    this.previewContent.innerHTML = content;
+                    this.previewContainer.classList.remove('empty');
+                    this.previewContainer.style.padding = `${bleed}mm`;
+                    this.previewContainer.style.border = '1px solid #ddd';
+                } else {
+                    this.previewContent.innerHTML = '';
+                    this.previewContainer.classList.add('empty');
+                    this.previewContainer.style.padding = '0';
+                    this.previewContainer.style.border = 'none';
+                }
+            }
+
+            getImageHTML(canvas, type) {
+                const dataURL = canvas.toDataURL('image/png');
+                if (type === 'preview') {
+                    return `<div class="pixel-art-preview-container"><img src="${dataURL}" class="pixel-art-preview" alt="Pixel art"></div>`;
+                } else {
+                    return `<div class="hidden-pixel-art-container"><img src="${dataURL}" class="hidden-pixel-art-image" alt="Pixel art"></div>`;
+                }
+            }
+
+            formatText(text) {
+                return text
+                    .replace(/\n/g, '<br>')
+                    .replace(/---+/g, '<div style="border-top: 1px dashed #666; margin: 4px 0; width: 100%;"></div>')
+                    .replace(/==+/g, '<div style="border-top: 1px solid #333; margin: 4px 0; width: 100%;"></div>');
+            }
+
+            generateReceipt() {
+                const text = this.receiptText.value;
+                const hasContent = text.trim() || this.pixelArtCanvases.canvas1 || this.pixelArtCanvases.canvas2;
+                
+                if (!hasContent) {
+                    this.updateStatus('Please add images or text before generating', false);
+                    return;
+                }
+
+                this.updateStatus('Generating receipt...', true);
+                this.generateBtn.disabled = true;
+
+                // 准备隐藏容器的内容
+                const fontSize = parseInt(this.textParams.fontSize.value);
+                const lineHeight = parseFloat(this.textParams.lineHeight.value);
+                const addPerforation = this.textParams.addPerforation.checked;
+                const preserveSpace = this.textParams.preserveSpace.checked;
+                const fontFamily = this.fontFamily.value;
+                const bleed = parseFloat(this.textParams.bleed.value);
+                const whiteSpace = preserveSpace ? 'pre' : 'pre-line';
+                
+                // 应用出血设置
+                this.hiddenContainer.style.padding = bleed + 'mm';
+                this.hiddenContainer.style.backgroundColor = '#ffffff';
+                this.hiddenContainer.style.width = (58 + 2 * bleed) + 'mm';
+                
+                let hiddenContent = '';
+                
+                // 根据布局生成隐藏内容
+                if (this.currentLayout === 'image1-text-image2') {
+                    if (this.pixelArtCanvases.canvas1) {
+                        hiddenContent += this.getImageHTML(this.pixelArtCanvases.canvas1, 'hidden') + '\n';
+                        if (addPerforation && (text.trim() || this.pixelArtCanvases.canvas2)) {
+                            hiddenContent += '<div class="hidden-perforation"></div>\n';
+                        }
+                    }
+                    
+                    if (text.trim()) {
+                        hiddenContent += `<div class="hidden-text-content" style="font-size: ${fontSize}px; line-height: ${lineHeight}; text-align: ${this.textAlign}; font-family: ${fontFamily}; white-space: ${whiteSpace}; padding: 0 ${bleed}mm;">${this.formatText(text)}</div>\n`;
+                        if (addPerforation && this.pixelArtCanvases.canvas2) {
+                            hiddenContent += '<div class="hidden-perforation"></div>\n';
+                        }
+                    }
+                    
+                    if (this.pixelArtCanvases.canvas2) {
+                        hiddenContent += this.getImageHTML(this.pixelArtCanvases.canvas2, 'hidden');
+                    }
+                } else if (this.currentLayout === 'image1-image2-text') {
+                    if (this.pixelArtCanvases.canvas1) {
+                        hiddenContent += this.getImageHTML(this.pixelArtCanvases.canvas1, 'hidden') + '\n';
+                        if (addPerforation && (this.pixelArtCanvases.canvas2 || text.trim())) {
+                            hiddenContent += '<div class="hidden-perforation"></div>\n';
+                        }
+                    }
+                    
+                    if (this.pixelArtCanvases.canvas2) {
+                        hiddenContent += this.getImageHTML(this.pixelArtCanvases.canvas2, 'hidden') + '\n';
+                        if (addPerforation && text.trim()) {
+                            hiddenContent += '<div class="hidden-perforation"></div>\n';
+                        }
+                    }
+                    
+                    if (text.trim()) {
+                        hiddenContent += `<div class="hidden-text-content" style="font-size: ${fontSize}px; line-height: ${lineHeight}; text-align: ${this.textAlign}; font-family: ${fontFamily}; white-space: ${whiteSpace}; padding: 0 ${bleed}mm;">${this.formatText(text)}</div>`;
+                    }
+                }
+
+                this.hiddenContent.innerHTML = hiddenContent;
+
+                // 使用 html2canvas 生成图片
+                setTimeout(() => {
+                    html2canvas(this.hiddenContainer, {
+                        backgroundColor: '#ffffff',
+                        scale: 2,
+                        logging: false,
+                        useCORS: true,
+                        allowTaint: true
+                    }).then(canvas => {
+                        const receiptData = {
+                            canvas: canvas,
+                            timestamp: new Date(),
+                            layout: this.currentLayout,
+                            hasImage1: !!this.pixelArtCanvases.canvas1,
+                            hasImage2: !!this.pixelArtCanvases.canvas2,
+                            textLength: text.trim().length
+                        };
+
+                        this.gallery.push(receiptData);
+                        this.updateGallery();
+                        this.updateStatus(`Receipt generated successfully (#${this.gallery.length})`, true);
+                        this.generateBtn.disabled = false;
+                    }).catch(error => {
+                        console.error('Generation error:', error);
+                        this.updateStatus('Generation failed', false);
+                        this.generateBtn.disabled = false;
+                    });
+                }, 100);
+            }
+
+            generateReceiptSlots() {
+                this.receiptsGrid.innerHTML = '';
+                const totalSlots = this.itemsPerPage;
+                
+                for (let i = 0; i < totalSlots; i++) {
+                    const slot = document.createElement('div');
+                    slot.className = 'receipt-slot';
+                    slot.innerHTML = `
+                        <div class="receipt-zigzag-top"></div>
+                        <div class="receipt-display">
+                            <div class="receipt-placeholder">
+                                slot ${i + 1}<br>
+                                <span style="font-size: 8px;">waiting for<br>receipt...</span>
+                            </div>
+                        </div>
+                        <div class="receipt-zigzag-bottom"></div>
+                        <div class="receipt-label">receipt #${i + 1}</div>
+                        <div class="receipt-actions">
+                            <button class="receipt-btn download-btn" onclick="app.downloadReceipt(${i})" disabled>download</button>
+                            <button class="receipt-btn clear-btn" onclick="app.clearReceipt(${i})" disabled>clear</button>
+                        </div>
+                    `;
+                    this.receiptsGrid.appendChild(slot);
+                }
+            }
+
+            updateGallery() {
+                const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+                const slots = this.receiptsGrid.querySelectorAll('.receipt-slot');
+                
+                slots.forEach((slot, index) => {
+                    const receiptIndex = startIndex + index;
+                    const receiptData = this.gallery[receiptIndex];
+                    const display = slot.querySelector('.receipt-display');
+                    const label = slot.querySelector('.receipt-label');
+                    const downloadBtn = slot.querySelector('.download-btn');
+                    const clearBtn = slot.querySelector('.clear-btn');
+                    
+                    if (receiptData) {
+                        const img = document.createElement('img');
+                        img.src = receiptData.canvas.toDataURL();
+                        img.className = 'receipt-image';
+                        img.onclick = () => this.previewReceipt(receiptIndex);
+                        
+                        display.innerHTML = '';
+                        display.appendChild(img);
+                        
+                        const timestamp = receiptData.timestamp.toLocaleTimeString();
+                        const layoutInfo = receiptData.layout.replace(/-/g, ' → ');
+                        const contentInfo = [];
+                        if (receiptData.hasImage1) contentInfo.push('img1');
+                        if (receiptData.hasImage2) contentInfo.push('img2');
+                        if (receiptData.textLength > 0) contentInfo.push('text');
+                        
+                        label.innerHTML = `receipt #${receiptIndex + 1}<br><span style="font-size: 7px; color: #999;">${timestamp} | ${layoutInfo}<br>${contentInfo.join(' + ')}</span>`;
+                        
+                        downloadBtn.disabled = false;
+                        clearBtn.disabled = false;
+                        downloadBtn.onclick = () => this.downloadReceipt(receiptIndex);
+                        clearBtn.onclick = () => this.clearReceipt(receiptIndex);
+                    } else {
+                        display.innerHTML = `<div class="receipt-placeholder">slot ${index + 1}<br><span style="font-size: 8px;">waiting for<br>receipt...</span></div>`;
+                        label.textContent = `receipt #${index + 1}`;
+                        downloadBtn.disabled = true;
+                        clearBtn.disabled = true;
+                    }
+                });
+                
+                this.updatePagination();
+            }
+
+            updatePagination() {
+                const totalPages = Math.max(1, Math.ceil(this.gallery.length / this.itemsPerPage));
+                this.pageIndicator.textContent = `page ${this.currentPage} of ${totalPages}`;
+                
+                this.prevPageBtn.disabled = this.currentPage <= 1;
+                this.nextPageBtn.disabled = this.currentPage >= totalPages || this.gallery.length === 0;
+            }
+
+            changePage(direction) {
+                const totalPages = Math.max(1, Math.ceil(this.gallery.length / this.itemsPerPage));
+                const newPage = this.currentPage + direction;
+                
+                if (newPage >= 1 && newPage <= totalPages) {
+                    this.currentPage = newPage;
+                    this.updateGallery();
+                }
+            }
+
+            previewReceipt(index) {
+                if (this.gallery[index]) {
+                    const img = this.gallery[index].canvas.toDataURL();
+                    const newWindow = window.open('', '_blank');
+                    newWindow.document.write(`
+                        <html>
+                            <head><title>Receipt Preview #${index + 1}</title></head>
+                            <body style="margin:0; padding:20px; background:#f5f5f5; display:flex; justify-content:center; align-items:center; min-height:100vh;">
+                                <img src="${img}" style="max-width:100%; max-height:100%; border:1px solid #ddd; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+                            </body>
+                        </html>
+                    `);
+                }
+            }
+
+            downloadReceipt(index) {
+                if (this.gallery[index]) {
+                    const canvas = this.gallery[index].canvas;
+                    const link = document.createElement('a');
+                    const timestamp = this.gallery[index].timestamp.toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                    link.download = `i2r-receipt-dual-${index + 1}-${timestamp}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    this.updateStatus(`Receipt #${index + 1} downloaded`, true);
+                }
+            }
+
+            clearReceipt(index) {
+                if (this.gallery[index]) {
+                    this.gallery.splice(index, 1);
+                    this.updateGallery();
+                    this.updateStatus(`Receipt #${index + 1} cleared`, true);
+                    
+                    // 调整当前页码
+                    const totalPages = Math.max(1, Math.ceil(this.gallery.length / this.itemsPerPage));
+                    if (this.currentPage > totalPages) {
+                        this.currentPage = totalPages;
+                    }
+                    this.updateGallery();
+                }
+            }
+
+            clearAll() {
+                // 清除图片
+                this.images = { image1: null, image2: null };
+                this.pixelArtCanvases = { canvas1: null, canvas2: null };
+                
+                // 重置上传区域
+                ['1', '2'].forEach(num => {
+                    const area = this.uploadAreas[`area${num}`];
+                    area.classList.remove('has-image');
+                    area.innerHTML = `
+                        <div class="upload-text">
+                            click or drag<br>image ${num} here
+                        </div>
+                        <div class="upload-hint">png/jpg/webp</div>
+                    `;
+                    this.imageInputs[`input${num}`].value = '';
+                });
+                
+                // 清除文本
+                this.receiptText.value = `WELCOME TO PIXEL MART
+========================
+Item 1             $12.99
+Item 2              $8.50
+Item 3             $15.25
+------------------------
+Subtotal           $36.74
+Tax                 $2.94
+Total              $39.68
+========================
+Thank you for shopping!
+Visit us again soon`;
+                
+                // 重置参数
+                this.imageParams.matrixSize1.value = '4';
+                this.imageParams.matrixSize2.value = '4';
+                this.imageParams.brightness1.value = '1';
+                this.imageParams.brightness2.value = '1';
+                this.imageParams.contrast1.value = '1';
+                this.imageParams.contrast2.value = '1';
+                this.imageParams.invert1.checked = false;
+                this.imageParams.invert2.checked = false;
+                this.imageParams.enableDither1.checked = true; // 新增
+                this.imageParams.enableDither2.checked = true; // 新增
+                
+                this.textParams.fontSize.value = '9';
+                this.textParams.lineHeight.value = '1.2';
+                this.textParams.bleed.value = '0';
+                this.textParams.addPerforation.checked = true;
+                this.textParams.preserveSpace.checked = false;
+                
+                // 重置字体和对齐
+                this.fontFamily.value = 'Consolas, Monaco, monospace';
+                this.textAlignOptions.forEach(opt => opt.classList.remove('selected'));
+                document.querySelector('.text-align-option[data-align="center"]').classList.add('selected');
+                this.textAlign = 'center';
+                
+                // 重置布局
+                this.currentLayout = 'image1-text-image2';
+                document.querySelector('input[value="image1-text-image2"]').checked = true;
+                document.querySelectorAll('.layout-option').forEach(opt => opt.classList.remove('selected'));
+                document.querySelector('input[value="image1-text-image2"]').closest('.layout-option').classList.add('selected');
+                
+                this.updateSliderValues();
+                this.updatePreview();
+                this.updateStatus('All settings cleared', true);
+            }
+
+            clearGallery() {
+                if (this.gallery.length === 0) return;
+                
+                if (confirm(`Clear all ${this.gallery.length} receipts from gallery?`)) {
+                    this.gallery = [];
+                    this.currentPage = 1;
+                    this.updateGallery();
+                    this.updateStatus('Gallery cleared', true);
+                }
+            }
+
+            downloadAll() {
+                if (this.gallery.length === 0) {
+                    this.updateStatus('No receipts to download', false);
+                    return;
+                }
+
+                this.updateStatus(`Downloading ${this.gallery.length} receipts...`, true);
+                
+                // 创建延迟下载函数
+                let downloadIndex = 0;
+                const downloadNext = () => {
+                    if (downloadIndex >= this.gallery.length) {
+                        this.updateStatus(`All ${this.gallery.length} receipts downloaded`, true);
+                        return;
+                    }
+                    
+                    const receiptData = this.gallery[downloadIndex];
+                    const link = document.createElement('a');
+                    const timestamp = receiptData.timestamp.toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                    link.download = `i2r-receipt-dual-${downloadIndex + 1}-${timestamp}.png`;
+                    link.href = receiptData.canvas.toDataURL('image/png');
+                    link.click();
+                    
+                    downloadIndex++;
+                    // 间隔200ms下载下一个，避免浏览器阻止
+                    setTimeout(downloadNext, 200);
+                };
+                
+                downloadNext();
+            }
+
+            updateStatus(message, success) {
+                this.infoPanel.innerHTML = `<span class="status-indicator${success ? ' active' : ''}"></span> ${message}`;
+                this.statusIndicator.className = `status-indicator${success ? ' active' : ''}`;
+            }
+        }
+
+        // 初始化应用
+        let app;
+        document.addEventListener('DOMContentLoaded', () => {
+            app = new DualImageReceiptGenerator();
+        });
+
+        // 全局函数（供HTML onclick使用）
+        function downloadReceipt(index) {
+            app.downloadReceipt(index);
+        }
+
+        function clearReceipt(index) {
+            app.clearReceipt(index);
+        }
+
+        // 键盘快捷键支持
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                app.generateReceipt();
+            } else if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                app.clearAll();
+            } else if (e.key === 'ArrowLeft' && e.altKey) {
+                e.preventDefault();
+                app.changePage(-1);
+            } else if (e.key === 'ArrowRight' && e.altKey) {
+                e.preventDefault();
+                app.changePage(1);
+            }
+        });
+
+        // 防止页面刷新时丢失数据提醒
+        window.addEventListener('beforeunload', (e) => {
+            if (app && app.gallery.length > 0) {
+                e.preventDefault();
+                e.returnValue = '';
+                return 'You have generated receipts that will be lost. Are you sure you want to leave?';
+            }
+        });
+    </script>
+</body>
+</html>
