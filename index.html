@@ -2055,18 +2055,19 @@ handleImageUpload(file, imageNum) {
                 this.images = { image1: null, image2: null };
                 this.pixelArtCanvases = { canvas1: null, canvas2: null };
                 
-                // 重置上传区域
-                ['1', '2'].forEach(num => {
-                    const area = this.uploadAreas[`area${num}`];
-                    area.classList.remove('has-image');
-                    area.innerHTML = `
-                        <div class="upload-text">
-                            click or drag<br>image ${num} here
-                        </div>
-                        <div class="upload-hint">png/jpg/webp</div>
-                    `;
-                    this.imageInputs[`input${num}`].value = '';
-                });
+// 只重置必要的状态，保留HTML结构和事件绑定
+['1', '2'].forEach(num => {
+    const area = this.uploadAreas[`area${num}`];
+    const input = this.imageInputs[`input${num}`];
+    
+    area.classList.remove('has-image');
+    input.value = ''; // 只清空文件选择
+    
+    // 重置显示文本
+    area.querySelector('.upload-text').innerHTML = `click or drag<br>image ${num} here`;
+    area.querySelector('.upload-hint').textContent = 'png/jpg/webp';
+});
+
                 
                 // 清除文本
                 this.receiptText.value = `WELCOME TO PIXEL MART
