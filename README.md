@@ -8,7 +8,7 @@ the unique receipt maker
 
 i2r Receipt Gallery is a powerful web-based tool for generating professional receipt-style outputs with dual image support. This application allows users to upload two images, customize processing parameters, add text content, and generate printable receipts. The generated receipts are saved in a gallery for easy management and export.
 
-![Application Preview](preview-screenshot.png)
+
 
 ## Key Features
 
